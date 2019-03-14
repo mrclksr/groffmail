@@ -1,0 +1,136 @@
+#!/usr/local/bin/perl
+use strict;
+use utf8;
+
+binmode(STDOUT, ":utf8");
+
+my $tmpout     = "/tmp/groffmail.$$";
+my $groffcmd   = "preconv | groff -P -cbu";
+my $linelength = 72;
+my ($fh, $groffargs, $textbuf, $quoted, $qdepth);
+
+sub pagesettings {
+	(my $settings = qq(
+	.po 0m
+	.ll ${linelength}m
+	.nr LL ${linelength}m
+	.nr PO 0m
+	.nr HM 0m
+	)) =~ s/^\s*//mg;
+	return $settings;
+}
+
+sub qstartseq {
+	return ".br\n::::QUOTE_START::::$_[0]\n.br\n";
+}
+
+sub qendseq {
+	return ".br\n::::QUOTE_END::::\n.br\n";
+}
+
+sub llseq {
+	return ".ll $_[0]m\n";
+}
+
+sub addqtext {
+	my ($bufref, $qtext, $depth) = @_;
+	$$bufref .= llseq($linelength - ($depth + 1));
+	$$bufref .= qstartseq($depth) . $qtext . qendseq();
+}
+
+sub parse {
+	my ($buf, $prfxlen, $quote, $in_quote);
+
+	foreach (<STDIN>) {
+		chomp;
+		if (/(^>[> ]*)\s+(.*)$/) {
+			my $prfx = $1;
+			my $text = $2;
+			$prfx =~ s/\s//g;
+			if ($in_quote && $prfxlen != length($prfx)) {
+				addqtext(\$buf, $quote, $prfxlen);
+				$quote = "";
+			}
+			$prfxlen = length($prfx);
+			if ($text =~ /^$/) {
+				$quote .= "\n.br\n";
+			} else {
+				# Escape backslashes, and '.'s at line start.
+				$text =~ s/\\/\\(rs/g;
+				$text =~ s/^\./\\N'46'/;
+				$text =~ s/^\s*//g;
+				if ($text =~ /(.*)\xe2\x80\x90|-\s*$/) {
+					$text = $1;
+					$text =~ s/^\s*//g;
+					$quote .= $text;
+				} else {
+					$quote .= "$text\n";
+				}
+			}
+			$in_quote = 1;
+		} else {
+			if ($in_quote) {
+				addqtext(\$buf, $quote, $prfxlen);
+				$quote = "";
+				# Restore line length
+				$buf .= llseq($linelength);
+			}
+			$in_quote = 0;
+			if (/^$/) {
+				$buf .= "\n.br\n";
+			} else {
+				$buf .= "$_\n";
+			}
+		}
+	}
+	addqtext(\$buf, $quote, $prfxlen) if ($quote);
+	return ($buf);
+}
+
+sub usage {
+	print "Usage: groffmail [-l <line length>][--][groff args ...]\n";
+	exit 1
+}
+
+while (@ARGV) {
+	if ($ARGV[0] eq '--') {
+		$groffargs = 1;
+	} elsif ($groffargs) {
+		$groffcmd .= " $ARGV[0]";
+	} elsif ($ARGV[0] =~ m/^\-l([0-9]+)$/) {
+		$linelength = $1;
+		usage() if ($1 !~ /^[0-9]+$/);
+	} elsif ($ARGV[0] eq '-l') {
+		shift;
+		usage() if (@ARGV == 0 || $ARGV[0] !~ /^[0-9]+$/);
+		$linelength = $ARGV[0];
+	}
+	shift
+}
+
+$textbuf = pagesettings() . parse();
+open($fh, "|-", "$groffcmd > $tmpout")
+	or die "Failed to open pipe to command '$groffcmd'";
+print $fh $textbuf;
+close($fh);
+
+open($fh, '<', $tmpout)
+	or die "Couldn't open '$tmpout'";
+binmode($fh, ":utf8");
+
+foreach (<$fh>) {
+	$_ =~ s/(.)\x08(.)/$2/g;
+	if (/^::::QUOTE_START::::([1-9])+$/) {
+		$quoted = 1;
+		$qdepth = $1;
+	} elsif (/^::::QUOTE_END::::$/) {
+		$quoted = 0;
+	} elsif ($quoted) {
+		print ">" x $qdepth;
+		print " $_";
+	} else {
+		print "$_";
+	}
+}
+close($fh);
+unlink($tmpout);
