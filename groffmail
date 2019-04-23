@@ -42,10 +42,10 @@ sub parse {
 	my ($buf, $prfxlen, $quote, $in_quote);
 
 	foreach (<STDIN>) {
-		chomp;
-		if (/(^>[> ]*)\s+(.*)$/) {
+		if (/(^>[> ]*)\s+(.*)/) {
 			my $prfx = $1;
 			my $text = $2;
+			chomp $text;
 			$prfx =~ s/\s//g;
 			if ($in_quote && $prfxlen != length($prfx)) {
 				addqtext(\$buf, $quote, $prfxlen);
@@ -59,7 +59,7 @@ sub parse {
 				$text =~ s/\\/\\(rs/g;
 				$text =~ s/^\./\\N'46'/;
 				$text =~ s/^\s*//g;
-				if ($text =~ /(.*)\xe2\x80\x90|-\s*$/) {
+				if ($text =~ /(.+)\xe2\x80\x90|-\s*$/) {
 					$text = $1;
 					$text =~ s/^\s*//g;
 					$quote .= $text;
@@ -69,6 +69,7 @@ sub parse {
 			}
 			$in_quote = 1;
 		} else {
+			chomp;
 			if ($in_quote) {
 				addqtext(\$buf, $quote, $prfxlen);
 				$quote = "";
