@@ -121,10 +121,10 @@ binmode($fh, ":utf8");
 
 foreach (<$fh>) {
 	$_ =~ s/(.)\x08(.)/$2/g;
-	if (/^::::QUOTE_START::::([1-9])+$/) {
+	if (/^::::QUOTE_START::::([1-9])+/) {
 		$quoted = 1;
 		$qdepth = $1;
-	} elsif (/^::::QUOTE_END::::$/) {
+	} elsif (/^::::QUOTE_END::::/) {
 		$quoted = 0;
 	} elsif ($quoted) {
 		print ">" x $qdepth;
