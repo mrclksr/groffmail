@@ -105,6 +105,9 @@ while (@ARGV) {
 		shift;
 		usage() if (@ARGV == 0 || $ARGV[0] !~ /^[0-9]+$/);
 		$linelength = $ARGV[0];
+	} elsif ($ARGV[0] =~ /^-.*/) {
+		print STDERR "Invalid option '$ARGV[0]'\n";
+		usage();
 	}
 	shift
 }
