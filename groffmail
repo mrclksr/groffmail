@@ -59,7 +59,7 @@ sub parse {
 				$text =~ s/\\/\\(rs/g;
 				$text =~ s/^\./\\N'46'/;
 				$text =~ s/^\s*//g;
-				if ($text =~ /(.+)\xe2\x80\x90|-\s*$/) {
+				if ($text =~ /(.+)(\xe2\x80\x90|-)\s*$/) {
 					$text = $1;
 					$text =~ s/^\s*//g;
 					$quote .= $text;
