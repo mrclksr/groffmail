@@ -124,6 +124,10 @@ binmode($fh, ":utf8");
 
 foreach (<$fh>) {
 	$_ =~ s/(.)\x08(.)/$2/g;
+
+	# Replace unicode hyphens
+	$_ =~ s/\x{2010}/-/g;
+
 	if (/^::::QUOTE_START::::([1-9])+/) {
 		$quoted = 1;
 		$qdepth = $1;
