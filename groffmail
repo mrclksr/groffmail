@@ -21,11 +21,11 @@ sub pagesettings {
 }
 
 sub qstartseq {
-	return ".nf\n::::QUOTE_START::::$_[0]\n.fi\n";
+	return "\n.nf\n::::QUOTE_START::::$_[0]\n.fi\n";
 }
 
 sub qendseq {
-	return ".nf\n::::QUOTE_END::::\n.fi\n";
+	return "\n.nf\n::::QUOTE_END::::\n.fi\n";
 }
 
 sub llseq {
